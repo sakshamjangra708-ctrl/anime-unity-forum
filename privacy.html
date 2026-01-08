@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon_32x32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon_48x48.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="favicon_96x96.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="favicon_128x128.png">
+  <link rel="stylesheet" href="style.css">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy</title>
+
+<!-- Preload background image for smooth loading -->
+<link rel="preload" as="image" href="images/o.jpeg">
+
+<style>
+body{
+    margin:0;
+    font-family: Arial, sans-serif;
+    color:#fff;
+
+    /* fallback background */
+    background-color: #000;
+
+    /* smooth fade-in */
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}
+
+body.bg-ready {
+    background: url("images/o.jpeg") no-repeat center center fixed;
+    background-size: cover;
+    opacity: 1;
+}
+
+.overlay{
+    min-height:100vh;
+    background: rgba(0,0,0,0.65);
+    padding: 20px;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+h2{
+    font-size:16px;
+    margin-top:20px;
+}
+
+p{
+    font-size:14px;
+    line-height:1.7;
+    margin-bottom:14px;
+}
+
+/* Smooth page open */
+@keyframes fadeUp{
+    from{opacity:0; transform:translateY(20px);}
+    to{opacity:1; transform:translateY(0);}
+}
+.slide-container{
+    animation: fadeUp 0.4s ease-out both;
+}
+</style>
+</head>
+
+<body>
+  <header class="site-header">
+  <a href="index.html" class="logo-link">
+    <img src="images/anime-unity-logo.png" alt="Anime Unity Logo" class="site-logo">
+  </a>
+  </header>
+
+<div class="slide-container">
+<div class="overlay">
+
+<h1>Privacy Policy</h1>
+
+<p>
+Your privacy is important to us. This website does not collect personal information such as your name, email address, or phone number.
+</p>
+
+<h2>Information Usage</h2>
+<p>
+Any content you view or upload is used only for providing features of this website. We do not sell, rent, or share user data with third parties.
+</p>
+
+<h2>Local Storage</h2>
+<p>
+This website may use browser local storage to save preferences or uploaded content for better performance. This data stays on your device.
+</p>
+
+<h2>Analytics</h2>
+<p>
+Basic analytics may be used to understand traffic and improve the website experience. No personally identifiable information is tracked.
+</p>
+
+<h2>Children’s Privacy</h2>
+<p>
+This website is intended for general audiences. We do not knowingly collect personal data from children.
+</p>
+
+<h2>Policy Updates</h2>
+<p>
+This privacy policy may be updated from time to time. Continued use of the website means you accept any changes.
+</p>
+
+</div>
+</div>
+
+<!-- GoatCounter Analytics -->
+<script data-goatcounter="https://animeunityforum.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+<!-- Smooth background loader -->
+<script>
+const bg = new Image();
+bg.src = "images/o.jpeg";
+bg.onload = () => {
+    document.body.classList.add("bg-ready");
+};
+</script>
+
+</body>
+</html>

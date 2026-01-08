@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gallery</title>
+<style>
+body{margin:0;background:#000;font-family:Arial,sans-serif;color:#fff;}
+.top-bar{padding:12px;text-align:center;background:#1E90FF;font-size:24px;font-weight:bold;user-select:none;cursor:pointer;}
+.uploadBox{display:none;text-align:center;padding:15px;}
+.gallery{display:grid;grid-template-columns:1fr;gap:18px;padding:15px;}
+.card{background:#111;border-radius:18px;overflow:hidden;box-shadow:0 4px 12px rgba(255,255,255,0.15);}
+.card img{width:100%;height:360px;object-fit:cover;background:#000;border-radius:12px;}
+.buttons{padding:10px;background:#222;display:flex;justify-content:space-between;}
+.btn{padding:8px 16px;border-radius:12px;border:none;background:#333;color:white;font-size:14px;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div class="top-bar" id="topBar">Gallery</div>
+
+<div class="uploadBox" id="uploadBox">
+  <input type="file" id="imgInput" accept="image/*"><br><br>
+  <button class="btn" onclick="uploadImage()">Post Image</button>
+</div>
+
+<div class="gallery" id="gallery"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-storage-compat.js"></script>
+
+<script>
+// Firebase setup
+const firebaseConfig = {
+  apiKey: "AIzaSyB9bgMrAdjNKet_RIzI0msXsQGdkLH3ZiM",
+  authDomain: "animeunity-30c1f.firebaseapp.com",
+  databaseURL: "https://animeunity-30c1f-default-rtdb.firebaseio.com",
+  projectId: "animeunity-30c1f",
+  storageBucket: "animeunity-30c1f.firebasestorage.app",
+  messagingSenderId: "462600107764",
+  appId: "1:462600107764:web:ae3d62c1c029e6190810a1",
+  measurementId: "G-R08681NZBW"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const storage = firebase.storage();
+
+// Creator logic
+const CREATOR_PASS = "@Boss";
+const uploadBox = document.getElementById("uploadBox");
+const galleryEl = document.getElementById("gallery");
+const topBar = document.getElementById("topBar");
+const urlParams = new URLSearchParams(window.location.search);
+
+// Check URL param for secret creator access
+if(urlParams.get("creator")==="on"){
+  const pass = prompt("Enter Creator Password:");
+  if(pass===CREATOR_PASS){
+    localStorage.setItem("galleryCreator","true");
+    sessionStorage.setItem("gallerySession","active");
+    uploadBox.style.display="block";
+    alert("Creator mode enabled!");
+  } else alert("Wrong password!");
+}
+
+const isCreator = () => localStorage.getItem("galleryCreator")==="true" &&
+                        sessionStorage.getItem("gallerySession")==="active";
+if(isCreator()) uploadBox.style.display="block";
+
+// Gallery logic
+function loadGallery(){
+  galleryEl.innerHTML="";
+  db.ref("gallery").on("value", snapshot=>{
+    snapshot.forEach(child=>{
+      const post = child.val();
+      const card = document.createElement("div");
+      card.className="card";
+
+      const img = document.createElement("img");
+      img.src = post.imageURL;
+      img.loading="lazy";
+      img.onclick = ()=>window.open(post.imageURL,"_blank");
+
+      const btns = document.createElement("div");
+      btns.className="buttons";
+
+      const viewBtn = document.createElement("button");
+      viewBtn.className="btn";
+      viewBtn.innerText="View";
+      viewBtn.onclick = ()=>window.open(post.imageURL,"_blank");
+      btns.appendChild(viewBtn);
+
+      if(isCreator()){
+        const delBtn = document.createElement("button");
+        delBtn.className="btn";
+        delBtn.innerText="Delete";
+        delBtn.onclick = ()=>db.ref("gallery").child(child.key).remove();
+        btns.appendChild(delBtn);
+      }
+
+      card.appendChild(img);
+      card.appendChild(btns);
+      galleryEl.appendChild(card);
+    });
+  });
+}
+
+function uploadImage(){
+  if(!isCreator()) return;
+  const file = document.getElementById("imgInput").files[0];
+  if(!file) return alert("Select an image");
+  const storageRef = storage.ref("gallery/"+file.name);
+  storageRef.put(file).then(()=>{
+    storageRef.getDownloadURL().then(url=>{
+      db.ref("gallery").push({imageURL: url});
+      document.getElementById("imgInput").value="";
+    });
+  });
+}
+
+loadGallery();
+</script>
+</body>
+</html>

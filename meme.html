@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meme Page</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #fff;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 { text-align: center; margin-bottom: 20px; }
+  #meme-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+  .meme-box {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+  .meme-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  #upload-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #ff4081;
+    color: white;
+    border: none;
+    padding: 15px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: none; /* hidden by default */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    font-size: 18px;
+  }
+  #upload-modal {
+    display: none;
+    position: fixed;
+    top:0; left:0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    justify-content:center;
+    align-items:center;
+  }
+  #upload-modal div {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    text-align:center;
+  }
+  #upload-modal input[type="file"] {
+    margin: 10px 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>🔥 Meme Hub 🔥</h1>
+
+<div id="meme-grid"></div>
+
+<button id="upload-btn">+</button>
+
+<div id="upload-modal">
+  <div>
+    <h2>Post Meme</h2>
+    <input type="file" id="meme-file" accept="image/*"><br>
+    <button onclick="uploadMeme()">Upload</button>
+    <button onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+  // --- Firebase Config ---
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
+
+<script>
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyB9bgMrAdjNKet_RIzI0msXsQGdkLH3ZiM",
+  authDomain: "animeunity-30c1f.firebaseapp.com",
+  databaseURL: "https://animeunity-30c1f-default-rtdb.firebaseio.com",
+  projectId: "animeunity-30c1f"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+  const memeGrid = document.getElementById('meme-grid');
+  const uploadBtn = document.getElementById('upload-btn');
+  const uploadModal = document.getElementById('upload-modal');
+
+  const CREATOR_PASSWORD = "mymemepass"; // change this
+
+  // Hidden click to reveal button
+  document.body.addEventListener('click', async function(e){
+    if(e.clientX > window.innerWidth - 50 && e.clientY > window.innerHeight - 50){
+      const pw = prompt("Enter Creator Password:");
+      if(pw === CREATOR_PASSWORD){
+        uploadBtn.style.display = 'block';
+      } else {
+        alert("Wrong Password!");
+      }
+    }
+  });
+
+  uploadBtn.onclick = () => {
+    uploadModal.style.display = "flex";
+  }
+
+  function closeModal() {
+    uploadModal.style.display = "none";
+  }
+
+  // --- Upload Meme ---
+  async function uploadMeme() {
+    const file = document.getElementById('meme-file').files[0];
+    if(!file) return alert("Select a file!");
+    
+    const storageRef = storage.ref('memes/' + file.name);
+    await storageRef.put(file);
+    const url = await storageRef.getDownloadURL();
+
+    // Add to Firestore
+    await db.collection('memes').add({
+      url: url,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    closeModal();
+  }
+
+  // --- Display Memes Live ---
+  db.collection('memes').orderBy('timestamp','desc')
+    .onSnapshot(snapshot => {
+      memeGrid.innerHTML = '';
+      snapshot.docs.forEach(doc => {
+        const meme = doc.data();
+        const div = document.createElement('div');
+        div.className = 'meme-box';
+        div.innerHTML = `<img src="${meme.url}" alt="meme">`;
+        memeGrid.appendChild(div);
+      });
+    });
+</script>
+
+</body>
+</html>

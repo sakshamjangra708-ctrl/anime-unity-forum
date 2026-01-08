@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anime Unity Comments</title>
+<style>
+body {
+  margin:0;
+  font-family: system-ui, sans-serif;
+  background: url('images/kaka.jpeg') center/cover fixed no-repeat;
+  min-height: 100vh;
+}
+#main {
+  max-width:600px;
+  margin:30px auto;
+  padding:20px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+h2 { text-align:center; margin-top:0; color:#fff; }
+input, textarea { width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:none; }
+button { padding:10px 15px; border:none; border-radius:5px; background:#007bff; color:white; cursor:pointer; margin-right:5px; }
+button:disabled { background:#999; cursor:not-allowed; }
+#comment-list { max-height: 400px; overflow-y: auto; padding-right:5px; }
+.comment-card {
+  background: rgba(255,255,255,0.95);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s forwards;
+}
+.comment-card-content strong { font-weight:bold; }
+.comment-card-content small { color:#555; }
+.comment-actions { text-align:right; margin-top:5px; }
+
+/* Fade-in animation */
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="main">
+  <h2>Anime Unity Comments</h2>
+
+  <!-- Authentication -->
+  <div id="auth-ui">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="btn-signin">Sign In / Sign Up</button>
+    <p id="auth-msg" style="color:yellow;"></p>
+  </div>
+
+  <!-- Comment input -->
+  <div id="comment-area" style="display:none;">
+    <input type="text" id="name-input" placeholder="Your display name" maxlength="20" />
+    <textarea id="comment-text" placeholder="Write a comment..."></textarea>
+    <button id="btn-post">Post Comment</button>
+  </div>
+
+  <!-- Comment list -->
+  <div id="comment-list"></div>
+</div>
+
+<script type="module">
+// Firebase JS SDK v7.20.0+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.7.0/firebase-auth.js";
+import { getDatabase, ref, push, onValue, remove, set, query, orderByChild, limitToLast, startAt } from "https://www.gstatic.com/firebasejs/11.7.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB9bgMrAdjNKet_RIzI0msXsQGdkLH3ZiM",
+  authDomain: "animeunity-30c1f.firebaseapp.com",
+  databaseURL: "https://animeunity-30c1f-default-rtdb.firebaseio.com",
+  projectId: "animeunity-30c1f",
+  storageBucket: "animeunity-30c1f.firebasestorage.app",
+  messagingSenderId: "462600107764",
+  appId: "1:462600107764:web:ae3d62c1c029e6190810a1",
+  measurementId: "G-R08681NZBW"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+// UI Elements
+const emailInput = document.getElementById("email");
+const passInput = document.getElementById("password");
+const btnSign = document.getElementById("btn-signin");
+const authMsg = document.getElementById("auth-msg");
+const commentArea = document.getElementById("comment-area");
+const commentText = document.getElementById("comment-text");
+const btnPost = document.getElementById("btn-post");
+const commentList = document.getElementById("comment-list");
+const nameInput = document.getElementById("name-input");
+
+// Abuse words
+const badWords = ["badword1","badword2","spam","offensive"];
+
+// User color tracking
+const userColors = {}; // uid -> array of colors
+
+// Sign-in / Sign-up
+btnSign.addEventListener("click",()=>{
+  const email = emailInput.value.trim();
+  const pwd = passInput.value.trim();
+  authMsg.textContent="";
+  if(!email || !pwd){ authMsg.textContent="Email & password required."; return; }
+
+  signInWithEmailAndPassword(auth,email,pwd)
+    .catch(()=>createUserWithEmailAndPassword(auth,email,pwd))
+    .then(userCred=>{ authMsg.textContent="Logged in!"; })
+    .catch(e=>{ authMsg.textContent="Error: "+e.message; });
+});
+
+// Auth state listener
+onAuthStateChanged(auth,user=>{
+  if(user){
+    document.getElementById("auth-ui").style.display="none";
+    commentArea.style.display="block";
+    loadComments();
+  } else {
+    document.getElementById("auth-ui").style.display="block";
+    commentArea.style.display="none";
+  }
+});
+
+// Random light color generator
+function getRandomLightColor(uid){
+  if(!userColors[uid]) userColors[uid]=[];
+  const hue = Math.floor(Math.random()*360);
+  const light = Math.floor(Math.random()*30)+70;
+  const color = `hsl(${hue}, 70%, ${light}%)`;
+  userColors[uid].push(color);
+  return color;
+}
+
+// Infinite scroll setup
+let lastLoadedTimestamp = 0;
+let isLoading = false;
+const batchSize = 10;
+
+function loadCommentsBatch(startAfter=0){
+  if(isLoading) return;
+  isLoading = true;
+
+  const commentsRef = ref(db, "comment");
+  const q = query(commentsRef, orderByChild("timestamp"), startAfter ? startAt(startAfter+1) : null, limitToLast(batchSize));
+
+  onValue(q, snapshot=>{
+    let commentsArray = [];
+    snapshot.forEach(child=>{
+      const data = child.val();
+      const key = child.key;
+      commentsArray.push({key, data});
+    });
+
+    // Sort ascending by timestamp
+    commentsArray.sort((a,b)=>a.data.timestamp-b.data.timestamp);
+
+    commentsArray.forEach(({key, data})=>{
+      lastLoadedTimestamp = Math.max(lastLoadedTimestamp, data.timestamp);
+
+      const card = document.createElement("div");
+      card.classList.add("comment-card");
+
+      const contentDiv = document.createElement("div");
+      contentDiv.classList.add("comment-card-content");
+      const color = getRandomLightColor(data.uid);
+      contentDiv.innerHTML = `<strong style="color:${color}">${data.username || "Anonymous"}</strong><br>${data.text}<br><small>${new Date(data.timestamp).toLocaleString()}</small>`;
+
+      card.appendChild(contentDiv);
+
+      if(auth.currentUser && auth.currentUser.uid === data.uid){
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.addEventListener("click",()=>{
+          remove(ref(db,"comment/"+key));
+        });
+        const actionsDiv = document.createElement("div");
+        actionsDiv.classList.add("comment-actions");
+        actionsDiv.appendChild(delBtn);
+        card.appendChild(actionsDiv);
+      }
+
+      commentList.appendChild(card);
+    });
+
+    isLoading = false;
+  }, {onlyOnce:true});
+}
+
+// Initial load
+function loadComments(){
+  lastLoadedTimestamp = 0;
+  commentList.innerHTML = "";
+  loadCommentsBatch();
+}
+
+// Post comment
+btnPost.addEventListener("click",()=>{
+  const text = commentText.value.trim();
+  const username = nameInput.value.trim() || "Anonymous";
+  if(!text){ alert("Comment cannot be empty"); return; }
+
+  const lower = text.toLowerCase();
+  for(let word of badWords){
+    if(lower.includes(word)){
+      alert("Your comment contains an unsuitable word."); return;
+    }
+  }
+
+  const newRef = push(ref(db,"comment"));
+  set(newRef,{
+    uid: auth.currentUser.uid,
+    username: username,
+    text: text,
+    timestamp: Date.now()
+  });
+
+  commentText.value="";
+  nameInput.value="";
+  commentList.scrollTop = commentList.scrollHeight; // scroll to bottom
+});
+
+// Infinite scroll trigger
+commentList.addEventListener("scroll",()=>{
+  if(commentList.scrollTop + commentList.clientHeight >= commentList.scrollHeight - 5){
+    loadCommentsBatch(lastLoadedTimestamp);
+  }
+});
+</script>
+</body>
+</html>
